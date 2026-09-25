@@ -142,7 +142,7 @@ The [how it works](docs/how-it-works.md) page explains the details:
 
 This is an early release (`0.x`). Known limits:
 
-- **Signed-in reads not yet verified live.** The page scripts were verified against live x.com while signed out, which serves the rewritten front end. The classic signed-in front end is covered by fixtures built from selectors proven in production by the Nextbrowser X reply agent. Three signed-in reads have not yet been confirmed on a live account: the *Following* tab, repost attribution, and exact counts read from React props.
+- **Verified live, one read still open.** On a live signed-in account, the whole flow has been run from the Nextbrowser app on 2026-09-25: switching to *Following*, reading the feed, announcing a new post, and taking the exact follower count from the page's own data. Signed out, the rewritten front end has been read as well. Repost attribution is covered by fixtures only so far.
 - **Tab labels by language.** The *Following* tab is found by its label in about fifteen languages. In any other language, the second tab is assumed.
 - **Counts only.** It tracks how many followers an account has, not which accounts followed or unfollowed.
 
@@ -163,8 +163,8 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a change. Keep changes fo
 
 Monitor only accounts you own or are authorized to operate, and follow [X's rules and terms](https://x.com/en/tos). The monitor paces itself on purpose:
 
-- at least one minute between passes, with a random spread;
-- at least five minutes between reads of the same profile;
+- at least one minute between passes, and a pass that is still running holds the next one back;
+- each profile is read at most once per pass;
 - a cap of 50 tracked handles.
 
 Do not remove these limits to scrape at scale.

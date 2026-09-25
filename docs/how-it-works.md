@@ -72,7 +72,7 @@ A laptop that slept through the night comes back to a feed it has not seen for h
 
 ## 3. Follower counts
 
-The pass tracks the signed-in account, when `trackOwnFollowers` is on, and every handle in `followerHandles`. It reads one account only when that account is due, which by default is every 30 minutes. It pauses a few seconds between profile pages.
+The pass tracks the signed-in account, when `trackOwnFollowers` is on, and every handle in `followerHandles`. It reads one account only when that account is due, which by default is every 30 minutes. With `followersIntervalMs: 0` it reads them on every pass, which is what Nextbrowser does, since its schedule already sets how often a pass runs. It pauses a few seconds between profile pages.
 
 x.com draws counts rounded above ten thousand ("12.3K", "92,3 млн"), so the exact figure is looked for first:
 

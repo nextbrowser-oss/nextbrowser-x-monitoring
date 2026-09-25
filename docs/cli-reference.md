@@ -32,7 +32,7 @@ After `npm link`, or when the package is installed with its bin, the same comman
 | Flag | Default | Meaning |
 | --- | --- | --- |
 | `--interval 5m` | 5 min | Time between passes. Minimum 1 min, spread ±20%. |
-| `--followers-interval 30m` | 30 min | Time between reads of one account's counts. Minimum 5 min. |
+| `--followers-interval 30m` | 30 min | Time between reads of one account's counts. Minimum 5 min; `0` reads them on every pass. |
 | `--max-post-age 6h` | 6 h | Older posts are not announced. |
 | `--feed-limit 60` | 60 | Feed entries one pass may read. |
 | `--max-scrolls 6` | 6 | Scrolls one pass may make. |

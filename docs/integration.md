@@ -4,7 +4,7 @@ The package has two entry points:
 
 | Entry | Contents | Runs in |
 | --- | --- | --- |
-| `@nextbrowser-oss/x-monitoring` | `runPass`, state and settings, events, page scripts, `scheduleDelay` | Anywhere. It has no Node imports; [`src/core.test.ts`](../src/core.test.ts) enforces this. |
+| `@nextbrowser-oss/x-monitoring` | `runPass`, `checkAccount`, state and settings, events, page scripts, `scheduleDelay` | Anywhere. It has no Node imports; [`src/core.test.ts`](../src/core.test.ts) enforces this. |
 | `@nextbrowser-oss/x-monitoring/node` | `nbcBrowser` (a browser over the `nbc`/`nextctl` CLI), `loadState`/`saveState`, the CLI | Node.js 22 or later |
 
 ## Installing
@@ -53,6 +53,16 @@ async function monitorPass(profileArgs: string[]) {
 
 // Settings changed in the UI: patch them, normalized.
 const next = withSettings(saved, { followerHandles: ["NASA"], includeReposts: true });
+```
+
+### Showing the account before anything runs
+
+`checkAccount` opens x.com's home page in the profile, reads who is signed in, and stops there. It reads no feed and no profiles, and it leaves the page open for a person who is about to sign in. Nextbrowser calls it from its *Open x.com* button, so the panel names the account before the first scheduled pass.
+
+```ts
+import { checkAccount } from "@nextbrowser-oss/x-monitoring";
+
+const { signedIn, handle, blocked } = await checkAccount({ browser: cliBrowser(profileArgs) });
 ```
 
 ### The browser
