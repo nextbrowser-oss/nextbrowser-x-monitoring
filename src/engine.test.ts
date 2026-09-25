@@ -177,6 +177,16 @@ describe("followers", () => {
     expect(second.summary.followerChecks).toBe(0);
   });
 
+  it("reads the counts on every pass when the interval is zero", async () => {
+    x.profiles.me = { followers: 50 };
+    const first = await pass(emptyState({ watchPosts: false, followersIntervalMs: 0 }));
+    clock += 5 * MINUTE;
+    x.profiles.me = { followers: 51 };
+    const second = await pass(first.state);
+    expect(second.summary.followerChecks).toBe(1);
+    expect(second.events).toEqual([expect.objectContaining({ type: "followers_changed", previous: 50, current: 51, delta: 1 })]);
+  });
+
   it("reads the rounded label when the page has no exact figure", async () => {
     x.profiles.me = { followers: null, followersText: "12.3K Followers" };
     const first = await pass(emptyState({ watchPosts: false }));

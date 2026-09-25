@@ -26,7 +26,8 @@ export interface MonitorSettings {
   /** Other accounts whose follower counts are tracked. Each one is a profile
    *  page load, so this is a short list, not everyone the account follows. */
   followerHandles: string[];
-  /** How often one account's counts are read. */
+  /** How often one account's counts are read. 0 reads them on every pass,
+   *  for a host whose own schedule already sets how often that is. */
   followersIntervalMs: number;
   /** Leave the tab on about:blank after a pass. A feed left on screen keeps
    *  autoplaying video and polling x.com, which the Go service found cost more
@@ -167,7 +168,9 @@ export function normalizeSettings(raw: unknown): MonitorSettings {
     maxPostAgeMs: integer(record.maxPostAgeMs, base.maxPostAgeMs, 0),
     trackOwnFollowers: flag(record.trackOwnFollowers, base.trackOwnFollowers),
     followerHandles: handles.slice(0, MAX_FOLLOWER_HANDLES),
-    followersIntervalMs: integer(record.followersIntervalMs, base.followersIntervalMs, MIN_FOLLOWERS_INTERVAL_MS),
+    followersIntervalMs: record.followersIntervalMs === 0
+      ? 0
+      : integer(record.followersIntervalMs, base.followersIntervalMs, MIN_FOLLOWERS_INTERVAL_MS),
     parkTab: flag(record.parkTab, base.parkTab),
   };
 }

@@ -126,7 +126,7 @@ Settings live in `state.settings`. `normalizeState` and `withSettings` clamp the
 | `maxPostAgeMs` | 6 h | Older posts are not announced. `0` turns the limit off. |
 | `trackOwnFollowers` | `true` | Track the signed-in account's own follower count. |
 | `followerHandles` | `[]` | Up to 50 other handles. Each one costs a profile page load. |
-| `followersIntervalMs` | 30 min | At least 5 min. A read that failed is retried after 10 min. |
+| `followersIntervalMs` | 30 min | At least 5 min, or `0` to read the counts on every pass. A read that failed is retried after 10 min. |
 | `parkTab` | `true` | Leave the tab on `about:blank` after a pass. |
 
 For the time between passes, `scheduleDelay(intervalMs)` returns the interval with a ±20% random spread. It never returns less than one minute, and it triples the wait while the profile needs a sign-in.
