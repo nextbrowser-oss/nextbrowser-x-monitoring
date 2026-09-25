@@ -109,6 +109,36 @@ export interface PassResult {
   posts: FeedPost[];
 }
 
+export interface AccountCheck {
+  signedIn: boolean;
+  handle?: string;
+  /** Why x.com could not be read at all, when that is not a missing sign-in. */
+  blocked?: string;
+}
+
+/** checkAccount opens x.com's home page and reads who is signed in, and stops
+ *  there: no feed, no profiles, and the page is left open, since it is what a
+ *  person who is about to sign in wants in front of them. It is what a panel
+ *  calls to show the account before any monitoring has run. */
+export async function checkAccount(deps: {
+  browser: MonitorBrowser;
+  now?: () => number;
+  sleep?: Sleep;
+  log?: LogSink;
+}): Promise<AccountCheck> {
+  const now = deps.now ?? Date.now;
+  const sleep = deps.sleep ?? defaultSleep;
+  const log = makeLogger(deps.log, now);
+  const home = await loadPage(deps.browser, HOME_URL, HOME_READY_SELECTOR, { sleep, log, now });
+  if (home.login_wall) return { signedIn: false };
+  if (!home.rendered || home.error_screen) return { signedIn: false, blocked: unrendered(home, "the home page") };
+  await waitForElement(deps.browser, IDENTITY_ANCHOR_SELECTOR, IDENTITY_WAIT_MS, sleep, now);
+  const snapshot = await deps.browser.evaluate<IdentitySnapshot>(identityScript(), "identity");
+  log("identity", { url: snapshot.url, login_wall: snapshot.login_wall, identity: snapshot.identity });
+  if (snapshot.login_wall || !snapshot.identity?.session) return { signedIn: false };
+  return { signedIn: true, ...(snapshot.identity.handle ? { handle: snapshot.identity.handle } : {}) };
+}
+
 class StopRequested extends Error {}
 class SignedOut extends Error {}
 

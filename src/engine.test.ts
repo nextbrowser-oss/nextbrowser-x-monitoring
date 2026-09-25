@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { runPass, type PassDeps, type PassResult } from "./engine.js";
+import { checkAccount, runPass, type PassDeps, type PassResult } from "./engine.js";
 import type { FollowersChangedEvent, MonitorEvent, NewPostEvent } from "./events.js";
 import { emptyState, type MonitorState } from "./state.js";
 import { FakeX, NOON, rawPost } from "./testing/fakeBrowser.js";
@@ -262,5 +262,27 @@ describe("the session", () => {
     x.feed = [rawPost("alice", 50)];
     await pass(emptyState({ parkTab: false, trackOwnFollowers: false }));
     expect(x.opened).not.toContain("about:blank");
+  });
+});
+
+describe("checkAccount", () => {
+  const deps = () => ({ browser: x, now: () => clock, sleep: async (ms: number) => { clock += ms; } });
+
+  it("names the signed-in account and leaves x.com open", async () => {
+    expect(await checkAccount(deps())).toEqual({ signedIn: true, handle: "me" });
+    expect(x.opened).toEqual(["https://x.com/home"]);
+    expect(x.labels).not.toContain("feed");
+  });
+
+  it("reports a signed-out profile", async () => {
+    x.signedIn = false;
+    expect(await checkAccount(deps())).toEqual({ signedIn: false });
+  });
+
+  it("tells a page x.com never drew from a sign-out", async () => {
+    x.homeRenders = false;
+    const result = await checkAccount(deps());
+    expect(result.signedIn).toBe(false);
+    expect(result.blocked).toContain("did not render the home page");
   });
 });

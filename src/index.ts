@@ -5,7 +5,7 @@
 // state file, command line) is "@nextbrowser-oss/x-monitoring/node".
 
 export type { MonitorBrowser } from "./browser.js";
-export { runPass, HOME_URL, type PassDeps, type PassResult, type PassSummary } from "./engine.js";
+export { checkAccount, runPass, HOME_URL, type AccountCheck, type PassDeps, type PassResult, type PassSummary } from "./engine.js";
 export type {
   AccountChangedEvent,
   FollowersChangedEvent,
