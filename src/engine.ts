@@ -102,6 +102,11 @@ export interface PassResult {
   state: MonitorState;
   events: MonitorEvent[];
   summary: PassSummary;
+  /** Everything this pass read from the Following feed, in feed order, new or
+   *  not. The events say what changed; this is what the feed looks like now,
+   *  which is what a dashboard shows — including after the first pass, which
+   *  announces nothing. Ads and the account's own posts are left out. */
+  posts: FeedPost[];
 }
 
 class StopRequested extends Error {}
@@ -123,6 +128,7 @@ class Pass {
   private readonly at: number;
   private state: MonitorState;
   private readonly events: MonitorEvent[] = [];
+  private posts: FeedPost[] = [];
   private readonly summary: PassSummary = {
     signedIn: false,
     loginRequired: false,
@@ -180,7 +186,7 @@ class Pass {
       },
     };
     this.log("pass_end", { ...this.summary });
-    return { state: this.state, events: this.events, summary: this.summary };
+    return { state: this.state, events: this.events, summary: this.summary, posts: this.posts };
   }
 
   // --- account -------------------------------------------------------------
@@ -262,6 +268,8 @@ class Pass {
     this.summary.feedRead = true;
     this.summary.entriesRead = posts.length;
     this.summary.scrolls = scrolls;
+    const self = account?.toLowerCase();
+    this.posts = posts.filter((post) => !self || (post.repost ? post.repostedBy?.toLowerCase() !== self : post.author.toLowerCase() !== self));
     if (posts.length === 0) {
       this.note(empty ? "The Following feed is empty: the account follows nobody who has posted." : "The Following feed showed no posts.");
       this.state = { ...this.state, feed: { ...feed, ...(account ? { owner: account } : {}), since, lastReadAt: this.at } };

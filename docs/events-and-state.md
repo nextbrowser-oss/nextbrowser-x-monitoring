@@ -61,6 +61,10 @@ The follower count of the monitored account or of a tracked handle moved.
 - **`signed_in`** is emitted on the first pass, and again after a sign-out.
 - **`account_changed`** means the next feed read starts from scratch, as a new baseline.
 
+## The feed as read
+
+`result.posts` holds every entry the pass read from the *Following* feed, in feed order, whether it is new or not. Ads and the account's own posts are left out. The events say what changed. `posts` says what the feed shows right now, which is what a dashboard displays, including after the first pass, which announces nothing.
+
 ## The pass summary
 
 `result.summary` describes one pass, for a status line or a panel:

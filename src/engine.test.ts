@@ -37,9 +37,11 @@ describe("the first pass", () => {
   it("signs in, takes the feed as it is, and records the account's followers", async () => {
     x.feed = [rawPost("alice", 50), rawPost("bob", 40)];
     x.profiles.me = { followers: 100, following: 10 };
-    const { state, events, summary } = await pass(emptyState());
+    const result = await pass(emptyState());
+    const { state, events, summary } = result;
 
     expect(types(events)).toEqual(["signed_in"]);
+    expect(result.posts.map((post) => post.author)).toEqual(["alice", "bob"]);
     expect(summary).toMatchObject({ signedIn: true, handle: "me", baseline: true, feedRead: true, newPosts: 0, followerChecks: 1 });
     expect(state.account).toMatchObject({ handle: "me", signedIn: true });
     expect(state.feed).toMatchObject({ owner: "me", since: expect.any(Number) });
@@ -50,6 +52,12 @@ describe("the first pass", () => {
     // A first read does not scroll: it announces nothing, so there is nothing
     // to look for further down.
     expect(x.labels).not.toContain("scroll");
+  });
+
+  it("hands back what the feed shows, without the account's own posts", async () => {
+    x.feed = [rawPost("alice", 50), rawPost("me", 45), rawPost("bob", 40)];
+    const { posts } = await pass(emptyState({ trackOwnFollowers: false }));
+    expect(posts.map((post) => post.author)).toEqual(["alice", "bob"]);
   });
 
   it("never mutates the state it was given", async () => {
