@@ -1,6 +1,6 @@
 {
   "name": "@nextbrowser-oss/x-monitoring",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "The open-source X monitoring engine for Nextbrowser: new posts from followed accounts and follower-count changes, read from a signed-in browser profile.",
   "keywords": [

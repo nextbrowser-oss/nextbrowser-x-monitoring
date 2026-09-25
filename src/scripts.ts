@@ -111,9 +111,19 @@ export function pageHealthScript(): string {
 
 /** existsScript asks whether anything in the document matches a selector.
  *  Not nbc's own wait, on purpose: that one wants the first match inside the
- *  viewport, and a long profile header pushes the first post below it. */
-export function existsScript(selector: string): string {
-  return `(() => { try { return { found: !!document.querySelector(${jsLiteral(selector)}) }; } catch (error) { return { found: false }; } })()`;
+ *  viewport, and a long profile header pushes the first post below it.
+ *
+ *  With orLoginWall, landing on a sign-in gate also ends the wait. x.com's
+ *  newer onboarding gate (/i/jf/onboarding) draws none of the old sign-in
+ *  markers, and a wait that only looked for them ran its whole window on every
+ *  pass of a signed-out profile — 41 seconds in the first live run. */
+export function existsScript(selector: string, orLoginWall = false): string {
+  if (!orLoginWall) {
+    return `(() => { try { return { found: !!document.querySelector(${jsLiteral(selector)}) }; } catch (error) { return { found: false }; } })()`;
+  }
+  return String.raw`(() => {${LOGIN_WALL_HELPER}
+  try { return { found: atLoginWall() || !!document.querySelector(${jsLiteral(selector)}) }; } catch (error) { return { found: false }; }
+})()`;
 }
 
 /** Who the page is signed in as. `session` is whether x.com drew a signed-in
@@ -522,6 +532,7 @@ export function allScripts(): Record<string, string> {
   return {
     health: pageHealthScript(),
     exists: existsScript(FEED_READY_SELECTOR),
+    existsOrLoginWall: existsScript(HOME_READY_SELECTOR, true),
     identity: identityScript(),
     followingTab: followingTabScript(false),
     followingTabClick: followingTabScript(true),

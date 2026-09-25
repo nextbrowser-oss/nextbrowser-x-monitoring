@@ -36,8 +36,9 @@ export async function waitForElement(
   timeoutMs: number,
   sleep: Sleep,
   now: () => number = Date.now,
+  orLoginWall = false,
 ): Promise<boolean> {
-  const script = existsScript(selector);
+  const script = existsScript(selector, orLoginWall);
   const deadline = now() + timeoutMs;
   for (;;) {
     const answer = await browser.evaluate<{ found?: boolean }>(script, "exists").catch(() => undefined);
@@ -86,7 +87,8 @@ async function settle(browser: MonitorBrowser, readySelector: string, options: L
   // Neither wait is fatal: a page that draws nothing is exactly what the
   // health read below exists to say.
   await browser.waitForLoad(LOAD_WAIT_SECONDS).catch(() => undefined);
-  await waitForElement(browser, readySelector, READY_WAIT_MS, options.sleep, options.now);
+  // A sign-in gate ends the wait too: there is nothing more to draw there.
+  await waitForElement(browser, readySelector, READY_WAIT_MS, options.sleep, options.now, true);
   return browser.evaluate<PageHealth>(pageHealthScript(), "health");
 }
 

@@ -9,6 +9,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   allScripts,
+  existsScript,
   feedScript,
   followingTabScript,
   identityScript,
@@ -104,6 +105,14 @@ describe("pageHealthScript", () => {
   it("knows the sign-in gate", () => {
     page("https://x.com/i/flow/login?redirect_after_login=%2Fhome", `<input autocomplete="username">`);
     expect(run<PageHealth>(pageHealthScript()).login_wall).toBe(true);
+  });
+});
+
+describe("existsScript", () => {
+  it("ends a wait on x.com's onboarding gate, which draws none of the old sign-in markers", () => {
+    page("https://x.com/i/jf/onboarding/web?redirect_after_login=%2Fhome&mode=login", `<div>See what's happening</div>`);
+    expect(run<{ found: boolean }>(existsScript("article", true)).found).toBe(true);
+    expect(run<{ found: boolean }>(existsScript("article")).found).toBe(false);
   });
 });
 
