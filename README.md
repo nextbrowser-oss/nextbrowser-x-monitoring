@@ -1,163 +1,178 @@
-# nextbrowser-x-monitoring
+<p align="center">
+  <img src="assets/nextbrowser-logomark.png" alt="Nextbrowser logo" width="112" />
+</p>
 
-Watches an X account through a NextBrowser profile that is signed in to x.com:
+<h1 align="center">Nextbrowser X Monitoring</h1>
 
-- **new posts** from the accounts it follows, read from the home page's
-  chronological *Following* feed, one page load per pass;
-- **follower-count changes**, for the signed-in account and for a short list
-  of other handles, read from their profile pages.
+<p align="center">
+  <strong>The open-source X monitoring engine for Nextbrowser: new posts from the accounts you follow and changes in follower counts, read from your own signed-in browser profile.</strong>
+</p>
 
-It reads and never acts: no follows, likes or bells. The only thing it clicks
-is the home page's own *Following* tab.
+<p align="center">
+  <a href="https://nextbrowser.com/">Website</a> ·
+  <a href="https://github.com/nextbrowser-oss/nextbrowser-app">Nextbrowser app</a> ·
+  <a href="https://docs.nextbrowser.com/">Product docs</a> ·
+  <a href="docs/how-it-works.md">How it works</a> ·
+  <a href="https://discord.com/invite/gHXEvkGXnz">Discord</a>
+</p>
 
-It is derived from
-[nextbrowser-x-reply-agent](https://github.com/nextbrowser-oss/nextbrowser-x-reply-agent),
-with the reply, LLM and publishing parts dropped, and it is shaped like the
-app's TypeScript port of that agent (`nextbrowser-app/src/lib/xreply`) so it
-can drop into the app as a dependency.
+<p align="center">
+  <a href="https://github.com/nextbrowser-oss/nextbrowser-x-monitoring/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/nextbrowser-oss/nextbrowser-x-monitoring/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="AGPL-3.0-only License" src="https://img.shields.io/badge/license-AGPL--3.0--only-2ea44f"></a>
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6">
+  <img alt="Node.js 22 or later" src="https://img.shields.io/badge/node-%E2%89%A522-339933">
+  <a href="https://github.com/nextbrowser-oss/nextbrowser-app"><img alt="Part of Nextbrowser" src="https://img.shields.io/badge/part%20of-Nextbrowser-2563eb"></a>
+</p>
 
-## Layout
+<p align="center">
+  English ·
+  <a href="docs/i18n/ru/README.md">Русский</a>
+</p>
 
-| Entry | What | Runs in |
-|---|---|---|
-| `@nextbrowser-oss/x-monitoring` | the pass, state, events, page scripts | anywhere: the app's renderer, Node, a browser. No Node imports (a test enforces it) |
-| `@nextbrowser-oss/x-monitoring/node` | a browser over the `nbc`/`nextctl` CLI, the state as a file, the CLI | Node ≥ 22 |
-| `x-monitor` | the command line | Node ≥ 22 |
+<p align="center">
+  <img src="assets/x-monitor-terminal.svg" alt="Example x-monitor output: new posts from followed accounts and follower-count changes" width="960" />
+</p>
 
-## Using it from the NextBrowser app
+## Why Nextbrowser X Monitoring
 
-A pass is a function from state to state, like the app's X reply engine: the
-app owns the timer, the storage and the browser.
+This package is the engine behind X monitoring in [Nextbrowser](https://github.com/nextbrowser-oss/nextbrowser-app). It runs inside the app, on a browser profile you have already signed in to x.com, and it reports two things without keeping a tab open all day:
+
+- what the people you follow just posted;
+- whether an account is gaining or losing followers.
+
+It is open source because it works with your own account. Anyone can read exactly which pages it opens, what it reads from them, and what it never touches.
+
+- **Read-only.** It never follows, likes, replies, or rings a bell. The only click is the feed's own *Following* tab.
+- **One page load for the whole feed.** It reads the chronological *Following* feed on the home page instead of visiting every followed profile.
+- **Proxy-traffic aware.** It scrolls only as far as the last pass reached, reads profiles on their own schedule, and leaves the tab on `about:blank` between passes.
+- **Owned by the app.** The engine keeps no timers, files, or network connections of its own. Nextbrowser runs a pass, stores the state, and decides what to show.
+
+## Key features
+
+| Area | What is available |
+| --- | --- |
+| New posts | Posts and replies from followed accounts, oldest first, with text, media counts, quoted post, and a link. Reposts are optional. |
+| Follower counts | The signed-in account plus up to 50 other handles. Exact figures when the page holds them, x.com's rounded ones otherwise, labelled as such. |
+| Session state | `signed_in`, `signed_out`, and `account_changed` events. A page x.com failed to draw is reported as a page failure, not as a sign-out. |
+| Both front ends | Reads the classic signed-in x.com and the rewritten one that has no test ids. |
+| Embeddable core | `runPass(state) → { state, events, summary }`, with no Node dependency, so it runs in the Nextbrowser renderer. |
+| Standalone CLI | `x-monitor` drives any Nextbrowser profile through `nbc`/`nextctl`, for development and for running without the app. |
+
+## In Nextbrowser
+
+Nextbrowser ships the engine as a dependency and gives it three things:
+
+- the browser it already drives for the selected profile;
+- a place to keep the state;
+- a timer.
 
 ```ts
 import { normalizeState, runPass, scheduleDelay } from "@nextbrowser-oss/x-monitoring";
-import { cliBrowser } from "./lib/xreply/browser"; // the app's own nextctl-backed browser
 
-const state = normalizeState(await readAppData("x-monitor-state.json")); // anything, even nothing
-const { state: next, events, summary } = await runPass({
-  browser: cliBrowser(profileArgs),          // the profile the app prepared
-  state,
-  log: (entry) => appendAppData("x-monitor-log.jsonl", entry),
-  onEvent: (event) => notify(event),         // as each one happens
-  shouldStop: () => stopRequested,
+const { state, events, summary } = await runPass({
+  browser: cliBrowser(profileArgs),          // the app's nextctl-backed browser for the profile
+  state: normalizeState(await load()),       // whatever was saved last time, or nothing
+  onEvent: (event) => notify(event),         // new_post, followers_changed, signed_out, ...
 });
-await writeAppData("x-monitor-state.json", next);
-setTimeout(nextPass, scheduleDelay(5 * 60_000, { loginRequired: summary.loginRequired }));
+await save(state);
+setTimeout(next, scheduleDelay(5 * 60_000, { loginRequired: summary.loginRequired }));
 ```
 
-`MonitorBrowser` is a subset of the app's `XBrowser` (`open`, `evaluate(script,
-label)`, `waitForLoad`, `reopen`, optional `clickAt`), so `cliBrowser` fits as is.
-The monitor waits for elements by polling `evaluate` itself, not through
-`nbc wait --selector`, which only matches inside the viewport.
+The [integration guide](docs/integration.md) describes the contract between the app and the engine.
 
-The package is private, and the app repository is public. So the app's CI
-cannot install it from this repository without a token. Choose one of these
-before wiring it in:
+## Run it standalone
 
-- vendor a tarball (`npm pack` → `vendor/*.tgz` in the app, `"file:"` dependency);
-- publish to GitHub Packages and give the app's CI a read token;
-- make this repository public.
-
-Installing from git (`"github:nextbrowser-oss/nextbrowser-x-monitoring#<sha>"`)
-also works, because `prepare` builds `dist/`.
-
-## Events
-
-Each event is plain JSON with a `type` and an `at` time in epoch milliseconds.
-
-| `type` | Fields |
-|---|---|
-| `new_post` | `account`, `post: { id, url, author, text, createdAt, repost, repostedBy?, reply, quotedUrl?, photos, video, card }` |
-| `followers_changed` | `handle`, `own`, `previous`, `current`, `delta`, `exact`, `following?`, `label?` |
-| `signed_in` / `signed_out` | `handle?` |
-| `account_changed` | `previous`, `current`. The feed starts over for the new account. |
-
-## How a pass works
-
-1. **Account.** Opens `x.com/home` and reads who is signed in from the account
-   chrome. A signed-out profile emits `signed_out` once, and nothing else is
-   read until someone signs it in. A page x.com never drew is reported as a
-   page failure, not a sign-out. This was the reply agent's hardest-won lesson.
-2. **Feed.** Selects *Following*. x.com remembers the choice, so from the second
-   pass on this is only a read. The pass reads posts top down, scrolling until
-   it has passed three posts it already knew (up to `maxScrolls`). The first
-   pass only records the starting line and announces nothing.
-   - An original post is new when it is newer than the watermark and was not
-     seen before. A reply's parent is often old, so old posts do not end the
-     scan.
-   - A repost is new only above the first already-seen post, because its id is
-     the original post's.
-   - Ads and the account's own posts are dropped. Posts older than
-     `maxPostAgeMs` (6 h by default) are not announced after downtime.
-3. **Followers.** For each tracked account that is due (every 30 min by default):
-   - It opens the profile and takes the exact figure when the page holds one:
-     the router data on the rewritten x.com, or the user object behind the
-     header on the classic one.
-   - Otherwise it parses the drawn label ("12.3K", "92,3 млн", "1,2 Mio.", "12万").
-     `exact: false` says the delta is only as good as the rounding.
-   - A switch between a rounded and an exact figure is not reported as a change.
-4. **Park.** Leaves the tab on `about:blank`. A feed left on screen autoplays
-   video and keeps polling x.com, which cost the reply agent more proxy traffic
-   than its reads did.
-
-Post times come from the snowflake id when the page has no `<time>`, as on the
-rewritten front end.
-
-## Settings
-
-Settings live in `state.settings` and are normalized on every load.
-
-| Setting | Default | |
-|---|---|---|
-| `watchPosts` | `true` | read the Following feed |
-| `includeReposts` | `false` | announce reposts by followed accounts |
-| `includeReplies` | `true` | announce their replies |
-| `feedLimit` | `60` | feed entries per pass, at most 300 |
-| `maxScrolls` | `6` | scrolls per pass |
-| `maxPostAgeMs` | 6 h | older posts are not announced |
-| `trackOwnFollowers` | `true` | the signed-in account's followers |
-| `followerHandles` | `[]` | other accounts, at most 50; each one costs a page load |
-| `followersIntervalMs` | 30 min | at least 5 min; a failed read is retried after 10 min |
-| `parkTab` | `true` | leave the tab on about:blank |
-
-## Command line
+To develop the engine, or to run it without the app, use the bundled CLI. You need Node.js 22 or later and a Nextbrowser profile that is signed in to x.com. The CLI uses the `nextctl` binary managed by the app, or `nbc` from your `PATH`.
 
 ```bash
-npm install && npm run build
-node dist/node/bin.js run --profile my-x-profile --followers NASA,SpaceX --interval 5m
-```
-
-- It drives the NextBrowser app's profiles. The runtime root defaults to the
-  app's: `~/.nextbrowser/runtime` on macOS, `<userData>/runtime` elsewhere.
-- It uses the app's managed `nextctl` when it exists, otherwise `nbc` from PATH.
-- It keeps its state in `~/.nextbrowser/x-monitoring/<profile>.json`.
-- Events go to stdout, as JSON lines when piped and as text on a terminal.
-- `--verbose` writes the full log to stderr.
-- `x-monitor --help` lists every flag.
-
-## Development
-
-```bash
-npm test          # vitest: parser, freshness rules, engine on a fake x.com,
-                  # page scripts on happy-dom fixtures of both front ends, nbc adapter
-npm run typecheck
+git clone https://github.com/nextbrowser-oss/nextbrowser-x-monitoring.git
+cd nextbrowser-x-monitoring
+npm ci
 npm run build
+node dist/node/bin.js run --profile <your-profile> --followers <handle1>,<handle2>
 ```
 
-## Known limits
+What to expect:
 
-- **The signed-in DOM is not verified live yet.** The scripts were run against
-  live x.com on 2026-09-25, but only signed out, which is the rewritten front
-  end. There, the post reader and the exact follower counts from router data
-  both worked. The signed-in classic front end is covered by fixtures built
-  from the reply agent's selectors. On a signed-in profile, three reads still
-  need a real run: the *Following* tab, the repost social context and the
-  React-props follower count.
-- **The Following tab label** is matched in about fifteen languages. Otherwise
-  the second tab is assumed.
-- **"Replying to" and ad labels** are matched in a handful of languages.
-- **Only follower counts** are tracked. Who followed or unfollowed would need
-  a scroll through `/followers`, which is not done.
-- **nbc 1.2.24 refuses browser switches** on proxied profiles. `nbcBrowser`
-  therefore starts profiles without `--autoplay-policy` unless you pass it in
-  `browserArgs`.
+1. The first pass records the current feed as a starting line and announces nothing.
+2. Each later pass prints new posts and follower changes as they happen, then waits about five minutes (`--interval`).
+3. Stop it with <kbd>Ctrl</kbd>+<kbd>C</kbd>. The next run continues from the saved state in `~/.nextbrowser/x-monitoring/<profile>.json`.
+
+When you pipe the output to another program, it switches to JSON lines, one event per line. The [CLI reference](docs/cli-reference.md) lists every flag.
+
+## How it works
+
+```mermaid
+flowchart LR
+  App["Nextbrowser app<br/>(or x-monitor CLI)"] --> Pass["runPass"]
+  Pass --> Browser["Signed-in profile<br/>(nbc / nextctl)"]
+  Browser --> Home["x.com/home<br/>Following feed"]
+  Browser --> Profiles["Profile pages<br/>follower counts"]
+  Home --> Pass
+  Profiles --> Pass
+  Pass --> Events["Events<br/>new_post · followers_changed · signed_out"]
+  Pass --> State["Next state"]
+  Events --> App
+  State --> App
+```
+
+Every pass does four things in order:
+
+1. It checks who is signed in.
+2. It reads the *Following* feed down to where the last pass stopped.
+3. It reads the follower counts that are due.
+4. It parks the tab.
+
+The [how it works](docs/how-it-works.md) page explains the details:
+
+- how a post is judged new;
+- how reposts and replies are handled;
+- how exact follower counts are read on both front ends of x.com;
+- why each of those rules exists.
+
+## Documentation
+
+- [How it works](docs/how-it-works.md): the pass step by step, freshness rules, follower counts, both x.com front ends.
+- [Integration guide](docs/integration.md): the contract with the Nextbrowser app, the Node adapter, installing the package.
+- [Events and state](docs/events-and-state.md): every event, the state document, and the settings.
+- [CLI reference](docs/cli-reference.md): `x-monitor` commands, flags, output, and exit codes.
+- [Troubleshooting](docs/troubleshooting.md): a sign-out that is not one, a missing *Following* tab, profiles that will not start.
+
+## Project status
+
+This is an early release (`0.x`). Known limits:
+
+- **Signed-in reads not yet verified live.** The page scripts were verified against live x.com while signed out, which serves the rewritten front end. The classic signed-in front end is covered by fixtures built from selectors proven in production by the Nextbrowser X reply agent. Three signed-in reads have not yet been confirmed on a live account: the *Following* tab, repost attribution, and exact counts read from React props.
+- **Tab labels by language.** The *Following* tab is found by its label in about fifteen languages. In any other language, the second tab is assumed.
+- **Counts only.** It tracks how many followers an account has, not which accounts followed or unfollowed.
+
+Proposals and bugs go to [GitHub Issues](https://github.com/nextbrowser-oss/nextbrowser-x-monitoring/issues). An issue is a proposal, not a release commitment.
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a change. Keep changes focused. For any change that affects what gets read from x.com, include tests against the fixture documents. A README change must also update the [Russian edition](docs/i18n/ru/README.md).
+
+## Community and support
+
+- Join the [Nextbrowser Discord](https://discord.com/invite/gHXEvkGXnz) for community chat, setup help, and product updates.
+- Ask general questions in [Nextbrowser Discussions](https://github.com/nextbrowser-oss/nextbrowser-app/discussions).
+- Use [GitHub Issues](https://github.com/nextbrowser-oss/nextbrowser-x-monitoring/issues) for actionable, scoped work.
+- Follow [SECURITY.md](SECURITY.md) for private vulnerability reporting. Do not publish security details in an issue.
+
+## Responsible use
+
+Monitor only accounts you own or are authorized to operate, and follow [X's rules and terms](https://x.com/en/tos). The monitor paces itself on purpose:
+
+- at least one minute between passes, with a random spread;
+- at least five minutes between reads of the same profile;
+- a cap of 50 tracked handles.
+
+Do not remove these limits to scrape at scale.
+
+## License
+
+Nextbrowser X Monitoring is open-source software available under the [GNU Affero General Public License v3.0 only](LICENSE).
+
+AGPL-3.0 permits commercial use, modification, and redistribution. If you distribute a modified version or run it as a network service, the license requires you to offer the corresponding source code under the same license. This repository's dependencies remain under their respective licenses.
+
+Copyright © 2026 Nextbrowser contributors.

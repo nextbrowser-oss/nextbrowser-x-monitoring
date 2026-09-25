@@ -2,8 +2,26 @@
   "name": "@nextbrowser-oss/x-monitoring",
   "version": "0.1.0",
   "private": true,
-  "description": "Watches an X account through a NextBrowser profile: new posts from the accounts it follows, and follower-count changes.",
-  "license": "UNLICENSED",
+  "description": "The open-source X monitoring engine for Nextbrowser: new posts from followed accounts and follower-count changes, read from a signed-in browser profile.",
+  "keywords": [
+    "nextbrowser",
+    "x",
+    "twitter",
+    "monitoring",
+    "followers",
+    "browser-automation",
+    "nbc"
+  ],
+  "homepage": "https://github.com/nextbrowser-oss/nextbrowser-x-monitoring#readme",
+  "bugs": {
+    "url": "https://github.com/nextbrowser-oss/nextbrowser-x-monitoring/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nextbrowser-oss/nextbrowser-x-monitoring.git"
+  },
+  "author": "Nextbrowser contributors",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
     ".": {
@@ -19,7 +37,9 @@
     "x-monitor": "dist/node/bin.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "README.md"
   ],
   "engines": {
     "node": ">=22"
@@ -28,7 +48,8 @@
     "build": "tsc -p tsconfig.build.json",
     "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "render:terminal": "node scripts/render-terminal.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

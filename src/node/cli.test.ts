@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { emptyState } from "../state.js";
-import { describeEvent, parseDuration, settingsFromFlags } from "./cli.js";
+import { describeEvent, describePass, parseDuration, settingsFromFlags } from "./cli.js";
 import { loadState, saveState } from "./store.js";
 
 describe("parseDuration", () => {
@@ -48,6 +48,23 @@ describe("describeEvent", () => {
     expect(line).toContain("@b reposted @a: [2 photos]  https://x.com/a/status/1");
     expect(describeEvent({ type: "followers_changed", at, handle: "me", own: true, previous: 10, current: 12, delta: 2, exact: true }))
       .toMatch(/followers @me \(you\): 10 → 12 \(\+2\)$/);
+  });
+});
+
+describe("describePass", () => {
+  const summary = {
+    signedIn: true, handle: "me", loginRequired: false, feedRead: true, baseline: false, entriesRead: 21, scrolls: 1,
+    newPosts: 3, gap: false, followerChecks: 2, followerChanges: 1, stopped: false, notes: [],
+  };
+
+  it("sums a pass up in one line, in 24-hour time", () => {
+    expect(describePass(summary, new Date(2026, 8, 25, 21, 5).getTime()))
+      .toBe("21:05  pass @me: feed: 3 new of 21, 1 scroll; followers: 2 read, 1 changed");
+  });
+
+  it("puts the notes under it and says when a sign-in is needed", () => {
+    const line = describePass({ ...summary, loginRequired: true, notes: ["Sign it in."] }, new Date(2026, 8, 25, 9, 0).getTime());
+    expect(line).toBe("09:00  pass @me: not signed in\n        Sign it in.");
   });
 });
 

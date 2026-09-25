@@ -127,7 +127,11 @@ export function settingsFromFlags(values: Values): Partial<MonitorSettings> {
 }
 
 function time(at: number): string {
-  return new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+}
+
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 function oneLine(text: string, max = 140): string {
@@ -159,7 +163,8 @@ export function describeEvent(event: MonitorEvent): string {
   }
 }
 
-function describePass(summary: PassSummary, at: number): string {
+/** describePass is the readable line for a finished pass. */
+export function describePass(summary: PassSummary, at: number): string {
   const parts: string[] = [];
   if (summary.loginRequired) parts.push("not signed in");
   else if (summary.blocked) parts.push(summary.blocked);
@@ -167,7 +172,7 @@ function describePass(summary: PassSummary, at: number): string {
     if (summary.feedRead) {
       parts.push(summary.baseline
         ? `feed baseline: ${summary.entriesRead} entries`
-        : `feed: ${summary.newPosts} new of ${summary.entriesRead}${summary.scrolls ? `, ${summary.scrolls} scrolls` : ""}`);
+        : `feed: ${summary.newPosts} new of ${summary.entriesRead}${summary.scrolls ? `, ${plural(summary.scrolls, "scroll")}` : ""}`);
     }
     if (summary.followerChecks) parts.push(`followers: ${summary.followerChecks} read, ${summary.followerChanges} changed`);
   }

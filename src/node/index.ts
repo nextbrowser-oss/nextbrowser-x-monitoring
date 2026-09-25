@@ -18,4 +18,4 @@ export {
   type NbcOptions,
 } from "./nbc.js";
 export { defaultStatePath, loadState, saveState } from "./store.js";
-export { describeEvent, main } from "./cli.js";
+export { describeEvent, describePass, main } from "./cli.js";
